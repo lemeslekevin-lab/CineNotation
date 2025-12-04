@@ -651,7 +651,7 @@
   <script>
     // CONFIGURATION - À MODIFIER AVEC VOTRE URL
     const CONFIG = {
-      API_URL: 'https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec'
+      API_URL: 'https://script.google.com/macros/s/AKfycbza-chRRLGabIBUgwoj4E0BB16ugVu_eTYJlR7HMDtHuZYCROr5zWlqEmrjI-nOwyuYWA/exec'
     };
 
     // ÉTAT APPLICATION
@@ -664,7 +664,6 @@
       await loadGenres();
       await loadUnratedMovies();
     });
-
     // CHARGEMENT GENRES
     async function loadGenres() {
       try {
@@ -704,3 +703,129 @@
       
       try {
         loading.style.display = 'block';
+        noMovies.style.display = 'none';
+        ticket.style.display = 'none';
+        error.style.display = 'none';
+        
+        const response = await fetch(`${CONFIG.API_URL}?action=getUnratedMovies`);
+        const data = await response.json();
+        
+        if (!data.success) throw new Error(data.error || 'Erreur chargement');
+        
+        moviesToRate = data.movies || [];
+        loading.style.display = 'none';
+        
+        if (moviesToRate.length === 0) {
+          noMovies.style.display = 'block';
+        } else {
+          currentMovieIndex = 0;
+          displayCurrentMovie();
+          ticket.style.display = 'flex';
+          setupFormHandlers();
+        }
+      } catch (err) {
+        console.error('Erreur:', err);
+        loading.style.display = 'none';
+        error.textContent = `Erreur: ${err.message}`;
+        error.style.display = 'block';
+      }
+    }
+
+    // AFFICHER FILM
+    function displayCurrentMovie() {
+      const movie = moviesToRate[currentMovieIndex];
+      if (!movie) {
+        document.getElementById('noMoviesMessage').style.display = 'block';
+        document.getElementById('ticketCard').style.display = 'none';
+        return;
+      }
+      
+      document.getElementById('movieTitle').textContent = movie.titre;
+      
+      const poster = document.getElementById('moviePoster');
+      if (movie.affiche) {
+        poster.src = movie.affiche;
+        poster.onerror = () => {
+          poster.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="296" height="242"%3E%3Crect fill="%23e0e0e0" width="296" height="242"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" fill="%23999"%3EAffiche%3C/text%3E%3C/svg%3E';
+        };
+      }
+      
+      document.getElementById('movieDate').textContent = movie.jourSeance || 'XX/XX/XXXX';
+      document.getElementById('movieTime').textContent = movie.heureSeance || 'XX:XX';
+      document.getElementById('movieDuration').textContent = movie.duree || 'XhXX';
+      document.getElementById('movieLang').textContent = movie.langue || 'VF';
+      document.getElementById('movieRoom').textContent = movie.salle ? `Salle ${movie.salle}` : 'Salle XX';
+      document.getElementById('movieSeat').textContent = movie.siege ? `Siège ${movie.siege}` : 'Siège AXX';
+      
+      document.getElementById('notationForm').reset();
+    }
+
+    // GÉRER SOUMISSION
+    function setupFormHandlers() {
+      const btn = document.getElementById('submitBtn');
+      btn.replaceWith(btn.cloneNode(true));
+      document.getElementById('submitBtn').addEventListener('click', handleSubmit);
+    }
+
+    async function handleSubmit(e) {
+      e.preventDefault();
+      const movie = moviesToRate[currentMovieIndex];
+      
+      const rating = document.querySelector('input[name="rating"]:checked');
+      const favorite = document.getElementById('favorite-checkbox');
+      const genreSelect = document.getElementById('genre-select');
+      
+      if (!rating) {
+        alert('Veuillez sélectionner une note');
+        return;
+      }
+      
+      if (!genreSelect.value) {
+        alert('Veuillez sélectionner un genre');
+        return;
+      }
+      
+      const movieData = {
+        ...movie,
+        note: parseInt(rating.value),
+        coupDeCoeur: favorite.checked,
+        genre: genreSelect.options[genreSelect.selectedIndex].text
+      };
+      
+      try {
+        const btn = document.getElementById('submitBtn');
+        btn.disabled = true;
+        btn.querySelector('.text-wrapper-3').textContent = 'Enregistrement...';
+        
+        const response = await fetch(CONFIG.API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'saveRating', movie: movieData })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          currentMovieIndex++;
+          if (currentMovieIndex < moviesToRate.length) {
+            displayCurrentMovie();
+          } else {
+            document.getElementById('ticketCard').style.display = 'none';
+            document.getElementById('noMoviesMessage').innerHTML = '<p>Tous les films notés ! 🎉</p>';
+            document.getElementById('noMoviesMessage').style.display = 'block';
+          }
+          btn.disabled = false;
+          btn.querySelector('.text-wrapper-3').textContent = 'Enregistrer';
+        } else {
+          throw new Error(result.error || 'Erreur sauvegarde');
+        }
+      } catch (err) {
+        console.error('Erreur:', err);
+        alert('Erreur: ' + err.message);
+        document.getElementById('submitBtn').disabled = false;
+        document.getElementById('submitBtn').querySelector('.text-wrapper-3').textContent = 'Enregistrer';
+      }
+    }
+  </script>
+</body>
+</html>
