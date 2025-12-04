@@ -4,7 +4,7 @@
 
 const CONFIG = {
   // Remplacer par l'URL de votre Web App Google Apps Script
-  API_URL: 'https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec'
+  API_URL: 'https://script.google.com/macros/s/AKfycbza-chRRLGabIBUgwoj4E0BB16ugVu_eTYJlR7HMDtHuZYCROr5zWlqEmrjI-nOwyuYWA/exec’
 };
 
 // ============================================
